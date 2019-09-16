@@ -1,7 +1,10 @@
 const router = require('express').Router();
 const jwt = require('jsonwebtoken');
+const secrets = require('../config/secrets.js');
 
 const bcrypt = require('bcryptjs');
+
+const Users = require('../users/users-model');
 
 router.post('/register', (req, res) => {
   // implement registration
@@ -11,7 +14,11 @@ router.post('/register', (req, res) => {
 
   Users.add(user)
   .then(saved => {
-    res.status(201).json(saved);
+    const token = generateToken(saved)
+    res.status(201).json({
+      user: saved,
+      token
+    });
   })
   .catch(error => {
     res.status(500).json(error);
@@ -26,8 +33,11 @@ router.post('/login', (req, res) => {
   .first()
   .then(user => {
     if(user && bcrypt.compareSync(password, user.password)) {
+      const token = generateToken(user)
+      
       res.status(200).json({
         message: `Welcome ${user.username}!`,
+        token
       });
     } else {
       res.status(401).json({
@@ -42,7 +52,7 @@ router.post('/login', (req, res) => {
 
 function generateToken(user) {
   const payload = {
-    sub: user.id,
+    subject: user.id,
     username: user.username
   }
 
@@ -50,7 +60,7 @@ function generateToken(user) {
     expiresIn: '1d'
   }
 
-  return jwt.sign(payload, process.env.JWT_SECRET, options);
+  return jwt.sign(payload, secrets.jwtSecret, options);
 
 }
 
